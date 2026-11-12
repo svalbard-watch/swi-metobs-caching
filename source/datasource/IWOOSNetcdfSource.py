@@ -117,6 +117,10 @@ class IWOOSNetcdfSource(DataSource):
             )
 
             if return_df:
+                # The cache handler compares the index with timezone-aware UTC
+                # times; the file times are naive UTC.
+                if raw_data.index.tz is None:
+                    raw_data = raw_data.tz_localize("UTC")
                 return raw_data
 
             self.logger.info(

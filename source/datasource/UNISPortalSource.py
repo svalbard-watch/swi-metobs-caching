@@ -22,6 +22,7 @@ class UNISPortalSource(DataSource):
 
     The portal serves each dataset as JSON at ``{base}/datasets/{id}/data``:
     one array per variable, aligned with ``time`` (UTC), ``null`` for gaps.
+    The DataFrames returned keep a UTC-aware index, as the cache handler expects.
     The station id is the portal dataset id. The station ``url`` is the portal
     base URL; it falls back to ``SWI_UNIS_PORTAL_URL`` and then to the public
     UNIS portal. The values of the station ``variables`` mapping are portal
@@ -60,7 +61,7 @@ class UNISPortalSource(DataSource):
         df = pd.DataFrame(payload)
         if df.empty or "time" not in df.columns:
             return pd.DataFrame(index=pd.DatetimeIndex([], name="time"))
-        df["time"] = pd.to_datetime(df["time"], utc=True).dt.tz_localize(None)
+        df["time"] = pd.to_datetime(df["time"], utc=True)
         return df.set_index("time").sort_index()
 
     def fetch_realtime_data(self, station_id):
