@@ -14,6 +14,7 @@ from source.datasource.FrostBoatSource import FrostBoatSource
 from source.datasource.HolfuySource import HolfuySource
 from source.datasource.IWOOSSource import IWOOSSource
 from source.datasource.IWOOSNetcdfSource import IWOOSNetcdfSource
+from source.datasource.UNISPortalSource import UNISPortalSource
 
 # Mapping dictionary for supported data sources
 DATASOURCE_MAPPING = {
@@ -23,6 +24,7 @@ DATASOURCE_MAPPING = {
     "HolfuySource": HolfuySource,
     "IWOOSSource": IWOOSSource,
     "IWOOSNetcdfSource": IWOOSNetcdfSource,
+    "UNISPortalSource": UNISPortalSource,
 }
 
 
