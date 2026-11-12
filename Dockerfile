@@ -25,8 +25,10 @@ ARG APP_UID=9001
 ARG APP_GID=9001
 WORKDIR /swi
 
-# Install Git and other dependencies
+# Apply the Debian security updates published since the base image was built (e.g. zlib1g
+# CVE-2026-76844 and CVE-2026-85091 are fixed in 1.3.1-1+deb13u1), then install Git.
 RUN apt-get update && \
+    apt-get upgrade -y && \
     apt-get install -y git && \
     rm -rf /var/lib/apt/lists/*
 
