@@ -258,6 +258,12 @@ class CacheHandler:
                     return_df=True,
                 )
 
+                if data is None:
+                    self.logger.warning(
+                        f"No hourly data returned for {station}, skipping it."
+                    )
+                    continue
+
                 path_parquet = os.path.join(
                     self.path_config.get("historical", "./000_long_timeseries/"),
                     station,
@@ -312,7 +318,6 @@ class CacheHandler:
                         )
 
             except Exception as e:
-                raise e
                 self.logger.error(
                     f"Error processing hourly data for {station}: {e}", exc_info=True
                 )
