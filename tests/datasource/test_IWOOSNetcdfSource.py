@@ -301,6 +301,17 @@ def test_transform_timeseries_data_return_df(iwoos_source, hourly_timeseries_df)
     assert list(df["waveHeight"]) == pytest.approx([0.1, 0.2, 0.3])
 
 
+def test_timeseries_df_has_a_utc_aware_index(iwoos_source, hourly_timeseries_df):
+    df = iwoos_source.transform_timeseries_data(
+        hourly_timeseries_df, STATION_ID, return_df=True
+    )
+
+    # cacheHandler compares the index with timezone-aware UTC times; a naive
+    # index raises TypeError there.
+    assert str(df.index.tz) == "UTC"
+    assert (df.index <= pd.to_datetime(datetime.now(timezone.utc))).all()
+
+
 def test_transform_timeseries_data_empty_dataframe(iwoos_source):
     empty_df = pd.DataFrame(
         columns=[

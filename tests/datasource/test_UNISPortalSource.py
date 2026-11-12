@@ -130,7 +130,7 @@ def test_trailing_slash_in_configured_url_is_ignored(source, fixed_payload):
     assert get.call_args[0][0] == f"{PORTAL}/datasets/{STATION_ID}/data"
 
 
-def test_timeseries_df_uses_config_keys_and_naive_utc_index(source, fixed_payload):
+def test_timeseries_df_uses_config_keys_and_utc_aware_index(source, fixed_payload):
     with patch("requests.get", return_value=response(fixed_payload)):
         df = source.fetch_timeseries_data(
             STATION_ID,
@@ -140,8 +140,11 @@ def test_timeseries_df_uses_config_keys_and_naive_utc_index(source, fixed_payloa
         )
 
     assert set(df.columns) == {"airTemperature", "windSpeed", "relativeHumidity"}
-    assert df.index.tz is None
-    assert df.index.min() == pd.Timestamp("2026-11-12T10:00:00")
+    # cacheHandler compares the index with timezone-aware UTC times; a naive
+    # index raises TypeError there.
+    assert str(df.index.tz) == "UTC"
+    assert df.index.min() == pd.Timestamp("2026-11-12T10:00:00", tz="UTC")
+    assert (df.index <= pd.to_datetime(datetime.now(timezone.utc))).all()
 
 
 def test_timeseries_applies_qc_to_sentinels(source, fixed_payload):
