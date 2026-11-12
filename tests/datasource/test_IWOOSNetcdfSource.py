@@ -40,6 +40,7 @@ def iwoos_source():
     source.config = MagicMock()
     source.config.get_metadata.return_value = dict(STATION_METADATA)
     source.config.get_variable.return_value = dict(STATION_METADATA["variables"])
+    source.config.get_variable_limits.return_value = {"seaTemperature": (-2, 35)}
     return source
 
 
@@ -99,7 +100,9 @@ def test_fetch_station_data_returns_empty_dict(iwoos_source):
 # ---------------------------------------------------------------------------
 
 
-def test_open_data_pivots_and_renames(iwoos_source, sample_dataset):
+def test_open_data_renames_and_collapses_the_thermistor_string(
+    iwoos_source, sample_dataset
+):
     with patch("xarray.open_dataset", return_value=sample_dataset):
         df = iwoos_source.open_data(STATION_ID)
 
@@ -110,8 +113,7 @@ def test_open_data_pivots_and_renames(iwoos_source, sample_dataset):
             "wavePeriodHigh",
             "lat",
             "lon",
-            "seaTemperature_0.00",
-            "seaTemperature_0.10",
+            "seaTemperature",
         ]
     )
     assert df.index.name == "time"
@@ -122,8 +124,37 @@ def test_open_data_pivots_and_renames(iwoos_source, sample_dataset):
     assert wave_row["lat"] == pytest.approx(78.2)
 
     temp_row = df.loc["2024-01-01 00:30:00"]
-    assert temp_row["seaTemperature_0.00"] == pytest.approx(5.0)
-    assert temp_row["seaTemperature_0.10"] == pytest.approx(5.5)
+    # One temperature per timestamp: the mean over the thermistor string.
+    assert temp_row["seaTemperature"] == pytest.approx(5.25)
+
+
+def test_open_data_ignores_implausible_thermistor_readings(
+    iwoos_source, sample_dataset
+):
+    # Real files contain readings such as 85 or 110 degC (sensor out of water).
+    sample_dataset["temperature_calibrated_at_positions"] = (
+        ("obs_temp", "positions"),
+        [[5.0, 85.0], [110.0, 120.0]],
+    )
+    with patch("xarray.open_dataset", return_value=sample_dataset):
+        df = iwoos_source.open_data(STATION_ID)
+
+    first = df.loc["2024-01-01 00:30:00"]
+    second = df.loc["2024-01-01 01:30:00"]
+    assert first["seaTemperature"] == pytest.approx(5.0)
+    assert pd.isna(second["seaTemperature"])
+
+
+def test_open_data_without_limits_keeps_every_reading(iwoos_source, sample_dataset):
+    iwoos_source.config.get_variable_limits.return_value = {}
+    sample_dataset["temperature_calibrated_at_positions"] = (
+        ("obs_temp", "positions"),
+        [[5.0, 85.0], [6.0, 6.5]],
+    )
+    with patch("xarray.open_dataset", return_value=sample_dataset):
+        df = iwoos_source.open_data(STATION_ID)
+
+    assert df.loc["2024-01-01 00:30:00"]["seaTemperature"] == pytest.approx(45.0)
 
 
 def test_open_data_missing_url_raises(iwoos_source):
@@ -158,7 +189,7 @@ def async_realtime_df():
     )
     return pd.DataFrame(
         {
-            "seaTemperature_0.00": [8.5793, np.nan, np.nan],
+            "seaTemperature": [8.5793, np.nan, np.nan],
             "waveHeight": [np.nan, np.nan, 0.0407],
             "wavePeriodLow": [np.nan, np.nan, 11.3086],
             "wavePeriodHigh": [np.nan, np.nan, np.nan],
@@ -184,7 +215,7 @@ def test_transform_realtime_data_takes_latest_value_per_column(
     assert observation["location"] == {"lat": 78.3837, "lon": 16.3614}
 
     # Each variable reports its own latest known reading.
-    assert observation["seaTemperature_0.00"] == 8.58
+    assert observation["seaTemperature"] == 8.58
     assert observation["waveHeight"] == 0.04
     assert observation["wavePeriodLow"] == 11.31
 
@@ -235,7 +266,7 @@ def hourly_timeseries_df():
             "waveHeight": [0.1, 0.2, 0.3],
             "wavePeriodLow": [10.0, 11.0, 12.0],
             "wavePeriodHigh": [5.0, 6.0, 7.0],
-            "seaTemperature_0.00": [4.0, 4.5, 5.0],
+            "seaTemperature": [4.0, 4.5, 5.0],
             "lat": [78.1, 78.2, 78.3],
             "lon": [16.1, 16.2, 16.3],
         },
@@ -256,7 +287,7 @@ def test_transform_timeseries_data_renames_lat_lon_to_location(
     first = result["timeseries"][0]
     assert first["location"] == {"lat": 78.1, "lon": 16.1}
     assert first["waveHeight"] == pytest.approx(0.1)
-    assert first["seaTemperature_0.00"] == pytest.approx(4.0)
+    assert first["seaTemperature"] == pytest.approx(4.0)
 
 
 def test_transform_timeseries_data_return_df(iwoos_source, hourly_timeseries_df):
@@ -276,7 +307,7 @@ def test_transform_timeseries_data_empty_dataframe(iwoos_source):
             "waveHeight",
             "wavePeriodLow",
             "wavePeriodHigh",
-            "seaTemperature_0.00",
+            "seaTemperature",
             "lat",
             "lon",
         ]
