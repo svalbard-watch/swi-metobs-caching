@@ -38,3 +38,8 @@ dev = [
     "pre-commit>=4.5.1",
     "ruff>=0.14.10",
 ]
+
+[tool.ruff.lint]
+# ruff 0.17 widened its default rule set. Keep the rules this code base is checked
+# against (pycodestyle E4/E7/E9 and pyflakes F) so a ruff upgrade does not change what fails CI.
+select = ["E4", "E7", "E9", "F"]
