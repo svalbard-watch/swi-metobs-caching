@@ -8,6 +8,7 @@ import pandas as pd
 import traceback
 
 from .datasource import DataSource
+from source.qc.qc import apply_qc
 
 
 class IWOOSNetcdfSource(DataSource):
@@ -320,4 +321,22 @@ class IWOOSNetcdfSource(DataSource):
 
             all_df.append(df)
 
-        return pd.concat(all_df, axis=0).sort_index()
+        df = pd.concat(all_df, axis=0).sort_index()
+
+        # Drop implausible readings first (e.g. 85 or 110 degC when a thermistor
+        # is out of the water), then reduce each profile to one value.
+        df = apply_qc(df, self.config.get_variable_limits())
+        return self._collapse_profiles(df, variables_mapping.keys())
+
+    @staticmethod
+    def _collapse_profiles(df, variables):
+        """
+        Replace per-depth columns such as ``seaTemperature_0.10`` by a single
+        ``seaTemperature`` column holding their mean (NaN when no valid depth).
+        """
+        for variable in variables:
+            depth_columns = [c for c in df.columns if c.startswith(f"{variable}_")]
+            if depth_columns:
+                df[variable] = df[depth_columns].mean(axis=1)
+                df = df.drop(columns=depth_columns)
+        return df
