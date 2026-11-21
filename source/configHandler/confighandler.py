@@ -10,6 +10,8 @@ config_files = [
     "config/stations/mobile_stations.json",
 ]
 
+variables_file = "config/variables/station_variables.json"
+
 
 class StationNotFoundError(Exception):
     """
@@ -42,7 +44,37 @@ class ConfigHandler:
         self.config_files = config_files
         self._cached_configs = None
         self._cached_credential = None
+        self.variables_file = variables_file
+        self._cached_limits = None
         self.logger = Logger.setup_logger(self.__class__.__name__)
+
+    def get_variable_limits(self):
+        """
+        Read the plausible value range of each variable from the variable catalogue.
+
+        A missing or unreadable catalogue is not an error: the run continues
+        without range checks. The result is cached after the first call.
+
+        Returns:
+            dict: ``{variable: (min, max)}``; a bound is None when not defined.
+        """
+        if self._cached_limits is not None:
+            return self._cached_limits
+
+        limits = {}
+        try:
+            with open(self.variables_file, encoding="utf-8") as file:
+                catalogue = json.load(file)
+            for name, entry in catalogue.items():
+                limits[name] = (entry.get("minValue"), entry.get("maxValue"))
+        except (OSError, ValueError, AttributeError) as e:
+            self.logger.warning(
+                f"No variable limits loaded from {self.variables_file}: {e}"
+            )
+            limits = {}
+
+        self._cached_limits = limits
+        return limits
 
     def get_variable(self, station_id):
         """

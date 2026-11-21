@@ -95,11 +95,38 @@ Cached files are stored in the `data` folder with the following organization:
 
 ---
 
+## Data sources
+
+A station selects its adapter with the `datasource` field of the station configuration
+(without it, fixed stations use `FrostSource` and mobile ones `FrostBoatSource`).
+
+| `datasource` | Provider | `url` in the station config |
+|---|---|---|
+| `FrostSource`, `FrostBoatSource` | MET Norway Frost API | Frost sources URL |
+| `HolfuySource` | Holfuy API | not used |
+| `IWINFixedSource` | THREDDS/OPeNDAP NetCDF (IWIN) | strftime template of the daily file |
+| `IWOOSSource` | IWOOS CSV on GitHub | not used |
+| `IWOOSNetcdfSource` | IWOOS buoys, THREDDS/OPeNDAP NetCDF | strftime template of the yearly file, e.g. `.../%Y_IWOOS_id5_with_tempcalibration_cleaned.nc` |
+| `UNISPortalSource` | UNIS observations portal (open-csi-publisher) | portal base URL, e.g. `https://observations.unis.no/catalog`; the station `id` is the portal dataset id |
+
+For `UNISPortalSource` the values of `variables` are portal column names (such as
+`wind_speed_mean`), and mobile platforms publish their position in `latitude`/`longitude`.
+
+### Quality control
+
+`IWOOSNetcdfSource` and `UNISPortalSource` turn sentinel values (-100, -999, -9999) and values
+outside the limits of the variable catalogue into missing values (`source/qc/qc.py`). The limits
+(`minValue`/`maxValue`) are read from `config/variables/station_variables.json` in the station
+configuration repository; without that file only sentinels are removed. There are no quality flags
+and no unit conversion.
+
 ## Technical Details
 - **Atomic Writing:** Ensures no concurrent write errors.
 - **Environment Variables:**
   - `SWI_HOLFUY_API_KEY`
   - `SWI_FROST_API_KEY`
+  - `SWI_UNIS_PORTAL_URL` (optional): default portal base URL for `UNISPortalSource` when a
+    station has no `url`; defaults to `https://observations.unis.no/catalog`.
   If not running in a docker container, the env variables are loaded from a .env at the root of the project.
 - **Volume Mapping:** A volume should be mapped to the data folder (exact path to be determined).
 - **Unit Testing** Most of the code is shipped with unit test from the legacy project but it have not yet been updated.
