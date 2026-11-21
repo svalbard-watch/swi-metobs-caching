@@ -14,50 +14,37 @@ WORKDIR /swi
 COPY --from=uv /swi/requirements.txt .
 RUN pip install --no-cache-dir --require-hashes -r requirements.txt
 
-# Stage 3: Runtime
-FROM python:${PYTHON_VERSION}-slim
-ARG APP_VERSION
+# Stage 3: Runtime, on the shared cron base image (swi-cron-base). It provides the unprivileged
+# swi user (uid/gid 9001, shared with the other SWI images that use the same volumes), /swi, the
+# run lock, the entrypoint and the healthcheck; see https://github.com/svalbard-watch/swi-cron-base
+# Its tag must match the Python version of the builder stage above.
+FROM ghcr.io/svalbard-watch/swi-cron-base:1.0.0-py3.14
 ARG PYTHON_VERSION
-# The project reserves uids above 9000. Every SWI image that shares a volume with this one
-# (the other cron jobs, mapproxy, the read-only data services) uses the same uid and gid,
-# so files written here are owned by the same user everywhere.
-ARG APP_UID=9001
-ARG APP_GID=9001
-WORKDIR /swi
 
-# Install Git and other dependencies
+# Git (for the station configuration) needs root; the base image ends with USER swi.
+USER root
 RUN apt-get update && \
-    apt-get install -y git && \
+    apt-get install -y --no-install-recommends git && \
     rm -rf /var/lib/apt/lists/*
 
 # Copy only necessary files from the builder stage
 COPY --from=builder /usr/local/lib/python${PYTHON_VERSION}/site-packages /usr/local/lib/python${PYTHON_VERSION}/site-packages
 COPY --from=builder /usr/local/bin /usr/local/bin
-# The job never installs packages at runtime: remove pip (and its vendored copies of
-# urllib3, msgpack, ...) so they are neither exposed nor flagged by image scanners.
-RUN python -m pip uninstall -y pip setuptools wheel 2>/dev/null || true
 
-# Unprivileged user with a home directory (git and entrypoint.sh write there)
-RUN groupadd --gid "${APP_GID}" swi \
-    && useradd --uid "${APP_UID}" --gid "${APP_GID}" --create-home --shell /usr/sbin/nologin swi
-
-# run-cron.sh clones the station configuration into ./config and the job writes into two
+# prepare-config.sh clones the station configuration into ./config and the job writes into two
 # volumes. Create the mount points owned by the job user: an empty named volume inherits the
 # ownership of the directory it is mounted on, so a fresh volume is writable without any
 # runtime chown.
 RUN mkdir -p /swi/data/historical /swi/data/realtime \
-    && chown -R swi:swi /swi
+    && chown -R swi:swi /swi/data
 
 # Copy the current directory to /swi (the code stays owned by root: the job can create
 # files here, not edit its own code)
 COPY . .
 
-# Make the entrypoint scripts executable
-RUN chmod +x /swi/entrypoint.sh /swi/run-cron.sh
+# run-cron (from the base image) first refreshes the station configuration, then runs the job,
+# one run at a time.
+ENV SWI_CRON_PRE_COMMAND="bash /swi/prepare-config.sh" \
+    SWI_CRON_COMMAND="python3 /swi/main.py"
 
 USER swi
-
-# Use the entrypoint script - supports DOCKER_CRON=1 to stay alive between runs so an
-# external scheduler can re-trigger the job via `docker exec <container> run-cron`
-ENTRYPOINT ["./entrypoint.sh"]
-
