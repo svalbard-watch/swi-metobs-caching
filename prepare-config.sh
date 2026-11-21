@@ -3,7 +3,7 @@
 # SWI_CRON_PRE_COMMAND, so a failure here aborts the run; a failed `git pull` is tolerated
 # because the configuration already on disk is still usable.
 
-REPO_URL="https://github.com/UNIS-Svalbard-Weather-Information/swi-metobs-station-configuration.git"
+REPO_URL="https://github.com/svalbard-watch/swi-metobs-station-configuration.git"
 FOLDER_NAME="config"
 OTHER_CONFIG="/swi/data/__swi-config__"
 
