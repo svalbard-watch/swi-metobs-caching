@@ -1,5 +1,19 @@
 # Changelog
 
+## [0.3.0](https://github.com/svalbard-watch/swi-metobs-caching/compare/0.2.0...0.3.0) (2026-11-21)
+
+
+### Features
+
+* **docker:** build on swi-cron-base ([10bb66a](https://github.com/svalbard-watch/swi-metobs-caching/commit/10bb66a0aaeeea7da345101c382fac8b6795fded))
+* **docker:** build on swi-cron-base ([e5f701b](https://github.com/svalbard-watch/swi-metobs-caching/commit/e5f701b87a7703d18e019fbd0f69afa028445f32))
+
+
+### Bug Fixes
+
+* clone the station configuration from the svalbard-watch organisation ([1b21bfe](https://github.com/svalbard-watch/swi-metobs-caching/commit/1b21bfe383d8981706ab3dd8406ed0c953162b74))
+* **docker:** remove pip again after copying the builder's packages ([6194b50](https://github.com/svalbard-watch/swi-metobs-caching/commit/6194b50ede67d8f43455ec543dc12e5d42dc958a))
+
 ## [0.2.0](https://github.com/svalbard-watch/swi-metobs-caching/compare/0.1.0...0.2.0) (2026-11-12)
 
 
