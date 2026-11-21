@@ -54,8 +54,7 @@ def test_is_station_online_handles_request_error(mock_post, holfuy_source):
 
 def test_handle_error_redacts_secret_in_url(holfuy_source):
     err = requests.exceptions.HTTPError(
-        "500 Server Error for url: "
-        "https://api.holfuy.com/live/?s=101&pw=SECRET123&utc"
+        "500 Server Error for url: https://api.holfuy.com/live/?s=101&pw=SECRET123&utc"
     )
     holfuy_source._handle_error(err)
     logged = holfuy_source.logger.error.call_args[0][0]
