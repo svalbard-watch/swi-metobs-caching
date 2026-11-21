@@ -1,7 +1,7 @@
 # SWI Meteorological Observation Caching Service
 
 ## Overview
-This service caches meteorological data from multiple sources. It is designed to run as a **cron task every 10 minutes**, ensuring up-to-date and reliable access to weather observations. The station configuration is **automatically updated** from the [swi-metobs-station-configuration](https://github.com/UNIS-Svalbard-Weather-Information/swi-metobs-station-configuration) repository.
+This service caches meteorological data from multiple sources. It is designed to run as a **cron task every 10 minutes**, ensuring up-to-date and reliable access to weather observations. The station configuration is **automatically updated** from the [swi-metobs-station-configuration](https://github.com/svalbard-watch/swi-metobs-station-configuration) repository.
 
 ---
 

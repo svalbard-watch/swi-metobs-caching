@@ -65,11 +65,12 @@ class HolfuySource(DataSource):
             dict: A dictionary containing transformed real-time weather data if successful.
             None: If an error occurs during the request.
         """
-        endpoint = f"https://api.holfuy.com/live/?s={station_id}&m=JSON&tu=C&su=m/s&pw={self.api_key}&utc"
+        endpoint = f"https://api.holfuy.com/live/?s={station_id}&m=JSON&tu=C&su=m/s&utc"
 
-        # print(params)
         try:
-            response = self.session.get(endpoint)
+            # Send the API key in the POST body (Holfuy supports this) so it
+            # never appears in the URL, access logs, or exception strings.
+            response = self.session.post(endpoint, data={"pw": self.api_key})
             response.raise_for_status()
             raw_data = response.json()
             self.logger.info(f"Fetched real-time data for {station_id}")
@@ -97,10 +98,11 @@ class HolfuySource(DataSource):
         )
         end_str = (pd.to_datetime(end_time) + pd.Timedelta(days=1)).strftime("%Y-%m-%d")
 
-        endpoint = f"https://api.holfuy.com/archive/?s={station_id}&m=JSON&tu=C&su=m/s&pw={self.api_key}&utc&type=1&start_date={start_str}&stop_date={end_str}"
+        endpoint = f"https://api.holfuy.com/archive/?s={station_id}&m=JSON&tu=C&su=m/s&utc&type=1&start_date={start_str}&stop_date={end_str}"
 
         try:
-            response = self.session.get(endpoint)
+            # API key goes in the POST body, not the URL (keeps it out of logs).
+            response = self.session.post(endpoint, data={"pw": self.api_key})
             response.raise_for_status()
             raw_data = response.json()
             self.logger.info(
@@ -268,10 +270,16 @@ class HolfuySource(DataSource):
             bool: True if the station is considered online, False otherwise.
         """
 
-        endpoint = f"https://api.holfuy.com/live/?s={station_id}&m=JSON&tu=C&su=m/s&pw={self.api_key}&utc"
+        endpoint = f"https://api.holfuy.com/live/?s={station_id}&m=JSON&tu=C&su=m/s&utc"
 
-        response = self.session.get(endpoint)
-        response_json = response.json()
+        try:
+            # API key in the POST body, not the URL (keeps it out of logs).
+            response = self.session.post(endpoint, data={"pw": self.api_key})
+            response.raise_for_status()
+            response_json = response.json()
+        except requests.exceptions.RequestException as e:
+            self._handle_error(e)
+            return False
 
         if not ("error" in response_json.keys() or "errorCode" in response_json.keys()):
             return True

@@ -3,6 +3,7 @@
 
 import sys
 import os
+import re
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "../../..")))
 
@@ -120,14 +121,23 @@ class DataSource(ABC):
         """
         pass
 
+    # Query-string parameters whose values are secrets and must never be logged.
+    _SECRET_QS_RE = re.compile(
+        r"([?&](?:pw|password|api_key|apikey|token|key)=)[^&\s]+", re.IGNORECASE
+    )
+
     def _handle_error(self, error):
         """
         Log and handle errors during data fetching or processing.
 
+        Any secret that rode in a request URL (e.g. Holfuy's ``pw``) is redacted
+        from the message, since exception strings include the full request URL.
+
         Args:
             error (Exception): The exception that occurred.
         """
-        self.logger.error(f"Error occurred: {error}")
+        message = self._SECRET_QS_RE.sub(r"\1<redacted>", str(error))
+        self.logger.error(f"Error occurred: {message}")
 
     def df_to_timeserie(self, df):
         """
